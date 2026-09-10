@@ -1,0 +1,59 @@
+name: Deploy to Cloud Run
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runnerx-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: checks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      CLOUD_SQL_CONNECTION_NAME: ${{ vars.CLOUD_SQL_CONNECTION_NAME }}
+      RUNTIME_SERVICE_ACCOUNT: ${{ vars.RUNTIME_SERVICE_ACCOUNT }}
+      DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      DB_USER: ${{ vars.DB_USER }}
+      DB_PASSWORD_SECRET: ${{ vars.DB_PASSWORD_SECRET }}
+      DB_PASSWORD_SECRET_VERSION: ${{ vars.DB_PASSWORD_SECRET_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required configuration
+        shell: bash
+        run: |
+          required=(GCP_PROJECT_ID GCP_REGION ARTIFACT_REPOSITORY CLOUD_RUN_SERVICE CLOUD_SQL_CONNECTION_NAME RUNTIME_SERVICE_ACCOUNT DEPLOY_SERVICE_ACCOUNT DB_NAME DB_USER DB_PASSWORD_SECRET DB_PASSWORD_SECRET_VERSION)
+          for variable in "${required[@]}"; do
+            if [[ -z "${!variable}" ]]; then
+              echo "Missing production Environment variable: $variable" >&2
+              exit 1
+            fi
+          done
+      - name: Authenticate using GitHub OIDC
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Build, migrate, smoke test and release
+        shell: bash
+        run: bash infra/gcp/deploy.sh

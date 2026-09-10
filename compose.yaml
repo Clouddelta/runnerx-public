@@ -1,0 +1,74 @@
+name: runnerx-public
+
+x-app-environment: &app-environment
+  APP_ENV: local
+  DB_HOST: db
+  DB_PORT: "3306"
+  DB_USER: ${DB_USER:-runnerx}
+  DB_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+  DB_NAME: ${DB_NAME:-runnerx}
+  DB_UNIX_SOCKET: ""
+  API_DOCS_ENABLED: "true"
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-runnerx}
+      MYSQL_USER: ${DB_USER:-runnerx}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3308}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$${MYSQL_PASSWORD}\" mysql --protocol=TCP --host=127.0.0.1 --user=\"$${MYSQL_USER}\" --database=\"$${MYSQL_DATABASE}\" --execute='SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  migrate:
+    image: runnerx-public:local
+    build: .
+    environment: *app-environment
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: runnerx-public:local
+    build: .
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  seed:
+    image: runnerx-public:local
+    build: .
+    profiles: ["tools"]
+    environment:
+      <<: *app-environment
+      DEMO_API_KEY: ${DEMO_API_KEY:-}
+    command: ["python", "-m", "runnerx.cli", "seed-demo", "--data-dir", "data/sample"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+volumes:
+  mysql-data:

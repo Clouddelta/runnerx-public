@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: runnerx_test
+          MYSQL_USER: runnerx_test
+          MYSQL_PASSWORD: ci-only-password
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      APP_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: runnerx_test
+      DB_PASSWORD: ci-only-password
+      DB_NAME: runnerx_test
+      DB_UNIX_SOCKET: ""
+      RUNNERX_TEST_DATABASE_URL: mysql+pymysql://runnerx_test:ci-only-password@127.0.0.1:3306/runnerx_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install application and test dependencies
+        run: python -m pip install ".[dev]"
+      - name: Migrate an empty MySQL database
+        run: alembic upgrade head
+      - name: Run unit and MySQL lifecycle tests
+        run: python -m pytest -p no:cacheprovider
+      - name: Build the production container
+        run: docker build --tag runnerx:ci .
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.4"
+      - name: Validate Terraform without provisioning resources
+        working-directory: infra/gcp
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: Validate deployment script syntax
+        run: bash -n infra/gcp/deploy.sh
+      - name: Verify release failure gates with fake cloud commands
+        run: python -m unittest discover -s infra/gcp -p test_deploy.py -v

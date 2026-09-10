@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runnerx"
+version = "0.1.0"
+description = "Runner and training camp backend with validated offline data pipelines"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.120.3", "pydantic==2.12.3", "uvicorn==0.38.0",
+  "SQLAlchemy==2.0.44", "alembic==1.17.1", "PyMySQL[rsa]==1.1.2",
+  "pandas==2.3.3", "openpyxl==3.1.5", "python-dotenv>=1.1,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "httpx==0.28.1"]
+
+[project.scripts]
+runnerx = "runnerx.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = ["integration: requires a disposable MySQL database"]
