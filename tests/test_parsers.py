@@ -11,25 +11,37 @@ from runnerx.sample import generate_sample
 
 @pytest.mark.parametrize("value, expected", [
     (2400, 2400), (2400.0, 2400), ("40:30", 2430), ("3:05:09", 11109),
-    ("3小时5分9秒", 11109), ("40分30秒", 2430), ("180分钟", 10800),
-    ("3600秒", 3600), ("40：30", 2430), (time(3, 5, 9), 11109),
+    ("3h5m9s", 11109), ("3h 5m 9s", 11109), ("40 min 30 sec", 2430), ("180 minutes", 10800),
+    ("3600 seconds", 3600), ("3 hours 5 minutes 9 seconds", 11109),
+    ("1 hour 1 minute 1 second", 3661), ("2 hrs 4 mins 8 secs", 7448),
+    ("1 HR 2 MIN 3 SEC", 3723), (time(3, 5, 9), 11109),
 ])
 def test_duration_formats(value, expected):
     assert parse_duration(value) == expected
 
 
-@pytest.mark.parametrize("value", [None, float("nan"), "", "00:99:00", "2:60", "fast", 0, -10, 2400.5, "200000", "1小时80分"])
+@pytest.mark.parametrize("value", [
+    None, float("nan"), "", "00:99:00", "2:60", "fast", 0, -10, 2400.5,
+    "200000", "1h80m", "5m60s", "1.5 hours", "3m2h", "1hourglass", "hours",
+])
 def test_duration_rejects_ambiguous_or_invalid_values(value):
     with pytest.raises(ValueError):
         parse_duration(value)
 
 
-@pytest.mark.parametrize("value, expected", [(330, 330), ("5:30", 330), ("5:30/km", 330), ("5分30秒/公里", 330), ("330秒/公里", 330), (time(0, 5, 30), 330)])
+@pytest.mark.parametrize("value, expected", [
+    (330, 330), ("5:30", 330), ("5:30/km", 330), ("5m30s/km", 330),
+    ("330 sec/km", 330), ("5 minutes 30 seconds / km", 330),
+    ("330 SECONDS / KM", 330), (time(0, 5, 30), 330),
+])
 def test_pace_formats(value, expected):
     assert parse_pace(value) == expected
 
 
-@pytest.mark.parametrize("value", ["3:30:00", "00:05:30", "1小时", time(1, 0), 0, -1, 7201, "5:99", "1.5"])
+@pytest.mark.parametrize("value", [
+    "3:30:00", "00:05:30", "1h", "1 hour", "0h5m", "1 HR", time(1, 0),
+    0, -1, 7201, "5:99", "1.5", "5m60s/km", "5:30/mile",
+])
 def test_pace_is_not_a_race_duration(value):
     with pytest.raises(ValueError):
         parse_pace(value)
@@ -51,10 +63,10 @@ def test_missing_cells_are_cleaned_without_dropping_zero_or_ids():
 
 
 def test_csv_aliases_preserve_leading_zero_ids_and_report_header_collisions():
-    rows, errors = _read_rows("跑者编号,姓名,出生年份\n0001,Sample Runner,1990\n".encode("utf-8-sig"), ".csv")
+    rows, errors = _read_rows("Runner Code,Name,Birth Year\n0001,Sample Runner,1990\n".encode("utf-8-sig"), ".csv")
     assert errors == []
     assert rows[0]["data"] == {"external_id": "0001", "full_name": "Sample Runner", "birth_year": "1990"}
-    for header in ("external_id,跑者编号", "external_id,external_id"):
+    for header in ("external_id,runner_external_id", "external_id,external_id"):
         _, errors = _read_rows((header + "\nSYN1,SYN2\n").encode(), ".csv")
         assert errors[0]["field"] == "headers"
 
@@ -69,6 +81,12 @@ def test_sample_is_deterministic_and_explicitly_synthetic(tmp_path):
     rows = list(workbook.active.values)
     workbook.close()
     assert len(rows) == 4
+    assert rows[0] == (
+        "external_id", "full_name", "gender", "birth_year", "height_cm", "weight_kg",
+        "test_10k_sec", "fm_best_sec", "prep_mileage_km", "experience_text",
+    )
+    assert all(value.isascii() for row in rows for value in row if isinstance(value, str))
+    assert {row[2] for row in rows[1:]} == {"M", "F"}
     assert rows[1][0:2] == ("SYN0001", "Sample Runner0001")
     sessions = pd.read_csv(first["sessions"])
     assert len(sessions) == 36

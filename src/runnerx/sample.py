@@ -7,6 +7,7 @@ import random
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from xml.etree import ElementTree
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from openpyxl import Workbook
@@ -15,7 +16,7 @@ from openpyxl.styles import Font, PatternFill
 
 START_DATE = date(2026, 1, 5)
 END_DATE = date(2026, 2, 1)
-HEADERS = ["跑者编号", "姓名", "性别", "出生年份", "身高(cm)", "体重(kg)", "10K测试成绩", "全马最佳成绩", "备赛周期跑量", "经历与计划"]
+HEADERS = ["external_id", "full_name", "gender", "birth_year", "height_cm", "weight_kg", "test_10k_sec", "fm_best_sec", "prep_mileage_km", "experience_text"]
 
 
 def _xlsx(path: Path, rows: list[list]) -> None:
@@ -46,6 +47,14 @@ def _xlsx(path: Path, rows: list[list]) -> None:
             content = source.read(name)
             if name == "docProps/core.xml":
                 content = re.sub(rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:(?:created|modified)>)", rb"\g<1>2026-01-01T00:00:00Z\g<2>", content)
+            if name == "xl/theme/theme1.xml":
+                # The default Office theme embeds localized fallback font names.
+                # Keep the complete sample archive English-only, including metadata.
+                theme = ElementTree.fromstring(content)
+                for node in theme.iter():
+                    if not node.get("typeface", "").isascii():
+                        node.set("typeface", "Calibri")
+                content = ElementTree.tostring(theme, encoding="utf-8", xml_declaration=True)
             entry = ZipInfo(name, (2026, 1, 1, 0, 0, 0))
             entry.compress_type = ZIP_DEFLATED
             entry.external_attr = 0o600 << 16
@@ -53,7 +62,7 @@ def _xlsx(path: Path, rows: list[list]) -> None:
 
 
 def generate_sample(output_dir: Path, runners: int = 30, seed: int = 42) -> dict:
-    """Write Chinese-header XLSX, four weeks of CSV, and a rejection example.
+    """Write English-header XLSX, four weeks of CSV, and a rejection example.
 
     No input or identity comes from the legacy spreadsheets. The supplied
     seed controls every generated value and all workbook timestamps are fixed.
@@ -70,10 +79,10 @@ def generate_sample(output_dir: Path, runners: int = 30, seed: int = 42) -> dict
         ten_k = rng.randint(2400, 4200)
         marathon = rng.randint(10800, 18000)
         registration_rows.append([
-            external_id, f"Sample Runner{index:04d}", "男" if index % 2 else "女",
+            external_id, f"Sample Runner{index:04d}", "M" if index % 2 else "F",
             rng.randint(1970, 2005), rng.randint(155, 190), round(rng.uniform(48, 90), 1),
             f"{ten_k // 60}:{ten_k % 60:02d}",
-            f"{marathon // 3600}小时{marathon % 3600 // 60}分{marathon % 60}秒",
+            f"{marathon // 3600}:{marathon % 3600 // 60:02d}:{marathon % 60:02d}",
             rng.randint(200, 700), "SYNTHETIC: four-week training sample; no real person.",
         ])
         for week in range(4):
@@ -107,13 +116,13 @@ def generate_sample(output_dir: Path, runners: int = 30, seed: int = 42) -> dict
         "They do not describe real people and were not copied from any legacy runner spreadsheet.\n\n"
         f"Generation: runners={runners}, seed={seed}. The same options produce byte-identical files.\n\n"
         "Suggested bootcamp: code `demo-2026`, start date `2026-01-05`, end date `2026-02-01`.\n\n"
-        f"- `registrations.xlsx`: {runners} synthetic runners, Chinese column aliases, explicit birth years.\n"
+        f"- `registrations.xlsx`: {runners} synthetic runners, canonical English headers, explicit birth years.\n"
         f"- `sessions.csv`: {len(session_rows)} synthetic sessions, three per runner per week for four weeks.\n"
         "- `invalid_registrations.xlsx`: two deliberately invalid rows (missing external ID; malformed 10K clock). "
         "The entire batch should be rejected, with no business rows changed.\n\n"
         "Import registrations before sessions. Runner identity is `external_id` within a tenant; names are not keys. "
         "Repeated committed imports of the same bytes are skipped.\n\n"
-        "Numeric race times are seconds. Race times also accept MM:SS, HH:MM:SS, or Chinese time units. "
+        "Numeric race times are seconds. Race times also accept MM:SS, HH:MM:SS, or English time units such as 3h 5m 9s. "
         "Pace is seconds per kilometre or MM:SS; a race-duration HH:MM:SS value is rejected as pace.\n",
         encoding="utf-8",
     )

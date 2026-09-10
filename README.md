@@ -1,15 +1,13 @@
 # RunnerX — Backend & Data Engineering Platform
 
-A Python backend and offline ETL platform for runner and training camp data. This first release connects synthetic Excel/CSV inputs, validation, MySQL, authenticated APIs, and lifecycle tests. Docker Compose is the v0.1 delivery target; no cloud account or deployment is required.
-
-RunnerX 是一个以跑者与训练营为场景的后端和数据工程项目。第一版通过 Docker Compose 交付，覆盖数据清洗、关系存储、租户隔离、API 和完整数据流程测试。无需部署云服务；仓库中的样例全部由程序生成。
+A Python backend and offline ETL platform for runner and training camp data. It connects synthetic Excel/CSV inputs, validation, MySQL, authenticated APIs, and lifecycle tests. Docker Compose is the v0.1 delivery target; no cloud account or deployment is required.
 
 ## What works
 
 - Python 3.11+, FastAPI, Pydantic 2, pandas, openpyxl, MySQL, SQLAlchemy 2, PyMySQL and Alembic.
 - UUID primary keys and composite foreign keys enforce tenant and bootcamp ownership in MySQL itself.
 - Bearer API keys identify tenants; only key hashes are stored. Five resources support CRUD, filtering and pagination.
-- CSV/XLSX imports recognize English and Chinese headers, validate dates/units/precision and reject invalid batches atomically.
+- CSV/XLSX imports recognize canonical English headers and documented English aliases, validate dates/units/precision and reject invalid batches atomically.
 - Runner identity uses a case-sensitive external ID within each tenant. Re-importing a committed file's bytes is a no-op; corrected files update existing business keys.
 - Dry runs write nothing. Imports retain a SHA-256 fingerprint, row-level errors and inserted/updated counts.
 - Versioned migrations, dedicated MySQL test fixtures, end-to-end tests, Docker Compose and CI.
@@ -63,7 +61,7 @@ docker compose down
 
 Normal `down` retains the MySQL volume. Adding `-v` deletes its data.
 
-Follow the [Docker guide](docs/docker-guide.md) for custom Excel/CSV imports, repeatable business acceptance, backup and restore, upgrades and common errors. See [v0.1.0 release notes](docs/releases/v0.1.0.md) for scope and compatibility.
+Follow the [Docker guide](docs/docker-guide.md) for custom Excel/CSV imports, repeatable business acceptance, backup and restore, upgrades and common errors. See [v0.1.1 release notes](docs/releases/v0.1.1.md) for scope and compatibility.
 
 ## Native Windows start
 
@@ -178,6 +176,6 @@ The repository makes no measured claim of 90% labor savings, high-throughput per
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Useful contributions include new header mappings with fixtures, parser edge cases, database/tenant regression tests, and query benchmarks. All submitted sample data must be synthetic or clearly authorized for redistribution.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Useful contributions include English header mappings with fixtures, parser edge cases, database/tenant regression tests, and query benchmarks. All submitted sample data must be synthetic or clearly authorized for redistribution.
 
 Code and generated fixtures are distributed under the [MIT license](LICENSE). Dependencies retain their respective licenses.

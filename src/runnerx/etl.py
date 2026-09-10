@@ -25,28 +25,28 @@ from runnerx.models import (
 
 
 ALIASES = {
-    "external_id": ("external_id", "runner_external_id", "runner_code", "跑者编号", "跑者外部编号", "学员编号"),
-    "full_name": ("full_name", "name", "姓名", "跑者姓名"),
-    "gender": ("gender", "sex", "性别"),
-    "birth_year": ("birth_year", "出生年份", "出生年"),
-    "height_cm": ("height_cm", "身高", "身高(cm)", "身高（cm）"),
-    "weight_kg": ("weight_kg", "体重", "体重(kg)", "体重（kg）"),
-    "group_id": ("group_id", "分组ID", "训练组ID"),
-    "test_10k_sec": ("test_10k_sec", "test_10k", "10K测试成绩", "10K成绩"),
-    "fm_best_sec": ("fm_best_sec", "fm_best", "全马最佳成绩", "半年全马最佳成绩(修正)", "半年全马最佳成绩（修正）"),
-    "prep_mileage_km": ("prep_mileage_km", "prep_cycle_mileage_km", "备赛周期跑量", "备赛跑量(km)"),
-    "experience_text": ("experience_text", "经历与计划", "经历计划"),
-    "session_date": ("session_date", "date", "训练日期", "日期"),
-    "distance_km": ("distance_km", "distance", "训练距离(km)", "训练距离", "距离(km)", "跑量"),
-    "pace_sec_per_km": ("pace_sec_per_km", "pace", "配速", "配速(秒/公里)", "配速（秒/公里）"),
-    "resting_hr": ("resting_hr", "静息心率"),
-    "fatigue_level": ("fatigue_level", "疲劳程度", "疲劳等级"),
-    "notes": ("notes", "备注"),
+    "external_id": ("external_id", "runner_external_id", "runner_code"),
+    "full_name": ("full_name", "name"),
+    "gender": ("gender", "sex"),
+    "birth_year": ("birth_year",),
+    "height_cm": ("height_cm",),
+    "weight_kg": ("weight_kg",),
+    "group_id": ("group_id",),
+    "test_10k_sec": ("test_10k_sec", "test_10k"),
+    "fm_best_sec": ("fm_best_sec", "fm_best"),
+    "prep_mileage_km": ("prep_mileage_km", "prep_cycle_mileage_km"),
+    "experience_text": ("experience_text",),
+    "session_date": ("session_date", "date"),
+    "distance_km": ("distance_km", "distance"),
+    "pace_sec_per_km": ("pace_sec_per_km", "pace"),
+    "resting_hr": ("resting_hr",),
+    "fatigue_level": ("fatigue_level",),
+    "notes": ("notes",),
 }
 
 
 def _header(value: object) -> str:
-    return re.sub(r"[\s_\-()（）/]+", "", str(value)).casefold()
+    return re.sub(r"[\s_\-()/]+", "", str(value)).casefold()
 
 
 _ALIAS_MAP = {_header(alias): field for field, aliases in ALIASES.items() for alias in aliases}
@@ -85,20 +85,22 @@ def _number(value: object, *, integer: bool = False) -> int | float:
 
 
 def parse_duration(value: object) -> int:
-    """Parse whole seconds, MM:SS, HH:MM:SS, or Chinese hours/minutes/seconds.
+    """Parse whole seconds, MM:SS, HH:MM:SS, or English time units.
 
-    Bare numeric values always mean seconds, never Excel day fractions or
-    minutes. Fractional seconds and malformed clock components are rejected.
+    Units accept h/hr/hour, m/min/minute, and s/sec/second, including plurals
+    and compact combinations such as 3h5m9s. Bare numeric values always mean
+    seconds, never Excel day fractions or minutes. Fractional seconds and
+    malformed clock components are rejected.
     """
     value = clean_cell(value)
     if value is None or isinstance(value, (bool, date)):
-        raise ValueError("provide seconds, MM:SS, HH:MM:SS, or Chinese hours/minutes/seconds")
+        raise ValueError("provide seconds, MM:SS, HH:MM:SS, or English hours/minutes/seconds")
     if isinstance(value, time):
         if value.microsecond:
             raise ValueError("fractional seconds are not supported")
         total = value.hour * 3600 + value.minute * 60 + value.second
     else:
-        text = str(value).strip().replace("：", ":")
+        text = str(value).strip()
         if re.fullmatch(r"\d+(?:\.0+)?", text):
             total = int(Decimal(text))
         elif ":" in text:
@@ -110,9 +112,15 @@ def parse_duration(value: object) -> int:
                 raise ValueError("clock minutes/seconds must be below 60")
             total = numbers[0] * 60 + numbers[1] if len(numbers) == 2 else numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
         else:
-            match = re.fullmatch(r"(?:(\d+)\s*(?:小时|时))?\s*(?:(\d+)\s*(?:分钟|分))?\s*(?:(\d+)\s*秒)?", text)
+            match = re.fullmatch(
+                r"(?:(\d+)\s*(?:hours?|hrs?|h))?\s*"
+                r"(?:(\d+)\s*(?:minutes?|mins?|m))?\s*"
+                r"(?:(\d+)\s*(?:seconds?|secs?|s))?",
+                text,
+                flags=re.IGNORECASE,
+            )
             if not match or not any(part is not None for part in match.groups()):
-                raise ValueError("unrecognized time; use seconds, MM:SS, HH:MM:SS, or Chinese time units")
+                raise ValueError("unrecognized time; use seconds, MM:SS, HH:MM:SS, or English time units")
             hours, minutes, seconds = (int(part or 0) for part in match.groups())
             if (seconds >= 60 and any(part is not None for part in match.groups()[:2])) or (match.group(1) is not None and minutes >= 60):
                 raise ValueError("clock minutes/seconds must be below 60")
@@ -123,19 +131,19 @@ def parse_duration(value: object) -> int:
 
 
 def parse_pace(value: object) -> int:
-    """Parse seconds/km or MM:SS/km; explicitly reject race-duration notation."""
+    """Parse seconds/km, MM:SS/km, or English minutes/seconds per km."""
     value = clean_cell(value)
     if isinstance(value, time):
         if value.hour:
             raise ValueError("pace must use seconds/km or MM:SS, not hours")
         result = parse_duration(value)
     else:
-        text = str(value).strip().replace("：", ":")
-        text = re.sub(r"\s*/\s*(?:km|公里|千米)\s*$", "", text, flags=re.IGNORECASE)
-        if text.count(":") > 1 or "时" in text:
+        text = str(value).strip()
+        text = re.sub(r"\s*/\s*km\s*$", "", text, flags=re.IGNORECASE)
+        if text.count(":") > 1 or re.search(r"\d+\s*(?:hours?|hrs?|h)", text, flags=re.IGNORECASE):
             raise ValueError("pace must use seconds/km or MM:SS, not a race duration")
-        # A bare seconds unit is useful for CSV exports (e.g. 330秒/公里).
-        result = _number(text[:-1], integer=True) if re.fullmatch(r"\d+秒", text) else parse_duration(text)
+        # A bare seconds unit is useful for CSV exports (e.g. 330 sec/km).
+        result = parse_duration(text)
     if not 0 < result <= 7200:
         raise ValueError("pace must be greater than 0 and at most 7200 seconds/km")
     return int(result)
@@ -227,12 +235,12 @@ def _validate_rows(db: Session, tenant_id: str, camp: Bootcamp, rows: list[dict]
         cell("external_id", lambda value: text(value, 80), required=True)
         if kind == "registrations":
             cell("full_name", lambda value: text(value, 120), required=True)
-            genders = {"m": "M", "male": "M", "男": "M", "f": "F", "female": "F", "女": "F", "o": "O", "other": "O", "其他": "O", "u": "U", "unknown": "U", "未知": "U"}
+            genders = {"m": "M", "male": "M", "f": "F", "female": "F", "o": "O", "other": "O", "u": "U", "unknown": "U"}
 
             def gender(value):
                 normalized = genders.get(str(value).casefold())
                 if normalized is None:
-                    raise ValueError("use M/F/O/U, 男/女/其他/未知")
+                    raise ValueError("use M/F/O/U or male/female/other/unknown")
                 return normalized
 
             cell("gender", gender)

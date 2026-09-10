@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "runnerx"
-version = "0.1.0"
+version = "0.1.1"
 description = "Runner and training camp backend with validated offline data pipelines"
 readme = "README.md"
 requires-python = ">=3.11"

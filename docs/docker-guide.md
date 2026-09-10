@@ -112,7 +112,7 @@ Choose dates that include your training records. The bundled `demo-2026` camp co
 
 ### Prepare the files
 
-Use the bundled `data/sample/registrations.xlsx` as a format reference. Save your own workbook at `data/private/registrations.xlsx`, which is ignored by Git. Keep generated release samples unchanged.
+Use the bundled `data/sample/registrations.xlsx` with canonical English headers as a format reference. Save your own workbook at `data/private/registrations.xlsx`, which is ignored by Git. Keep generated release samples unchanged.
 
 Registration data needs `external_id` and `full_name`. Training data needs `external_id`, `session_date`, `distance_km` and `pace_sec_per_km`. Import registrations before sessions. XLSX uses the first worksheet, with headers in row 1; CSV must be UTF-8. The maximum source file size is 32 MiB.
 
@@ -272,4 +272,4 @@ Inspect logs before sharing them because they can contain request paths and oper
 - [Docker Compose startup and health waiting](https://docs.docker.com/reference/cli/docker/compose/up/)
 - [Copy files between a service container and the host](https://docs.docker.com/reference/cli/docker/compose/cp/)
 - [Compose environment interpolation and precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
-- [RunnerX data contracts](data-contracts.md), [architecture](architecture.md), [v0.1.0 release notes](releases/v0.1.0.md)
+- [RunnerX data contracts](data-contracts.md), [architecture](architecture.md), [v0.1.1 release notes](releases/v0.1.1.md)

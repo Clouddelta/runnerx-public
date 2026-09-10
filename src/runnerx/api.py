@@ -27,7 +27,7 @@ from runnerx.schemas import (
 _settings = get_settings()
 app = FastAPI(
     title="RunnerX API",
-    version="0.1.0",
+    version="0.1.1",
     description="Authenticated, tenant-scoped training-camp data and import audit records.",
     docs_url="/docs" if _settings.docs_enabled else None,
     redoc_url="/redoc" if _settings.docs_enabled else None,

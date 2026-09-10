@@ -8,6 +8,7 @@ Before submitting, run the unit tests and the complete MySQL suite. If only unit
 
 Development conventions:
 
+- Use English throughout documentation, code comments, docstrings, CLI/API messages, tests, examples and synthetic sample data. Keep import headers and unit labels in English.
 - Use explicit units in field names (`_sec`, `_km`, `_cm`, `_kg`).
 - Distinguish a missing value from a numeric zero.
 - Preserve source row locations for validation failures.

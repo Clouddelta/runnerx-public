@@ -1,5 +1,22 @@
 # Release 0.1 validation
 
+## English-only v0.1.1 checks
+
+Checked locally on 2026-09-10 with Python 3.11 and Docker MySQL 8.4.11:
+
+| Check | Observed result |
+| --- | --- |
+| Repository language audit | 60 project files checked; no Chinese text found in paths, source, decoded Python strings, documentation or decoded workbook XML, including theme font metadata |
+| Shipped synthetic fixtures | Byte-identical to a fresh generator run with the default seed and runner count |
+| Complete Python suite against a disposable MySQL database | 156 passed, 1 skipped on Windows because symbolic-link creation is unavailable |
+| Docker build and API upgrade | Passed; OpenAPI reports version 0.1.1 |
+| Live Docker business acceptance | All 11 checks passed, including scoped QA cleanup |
+| English demo reseed | 30 existing registrations processed as updates, 0 inserts; unchanged training CSV skipped as a duplicate |
+| Demo business-data preservation | Existing runner, registration, camp and session identities and values preserved; registration raw input metadata updated to English |
+| Demo API payloads | English content verified across runners, registrations, sessions, groups and camps; counts remain 30 runners, 30 registrations and 360 sessions |
+
+The release notes link to CI evidence for the published v0.1.1 commit. Earlier execution records below remain associated with their original versions.
+
 ## Docker v0.1.0 release checks
 
 The reusable tools were checked locally on 2026-09-10 with MySQL 8.4.11:
