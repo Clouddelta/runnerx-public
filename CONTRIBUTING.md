@@ -1,17 +1,32 @@
-# Contributing
+# Development
 
-Set up the Python development environment described in README. Keep pull requests focused and describe the behavior change and verification.
+## Setup
 
-For parser changes, include synthetic inputs, expected outputs and failure cases. For database/API changes, include the migration and a MySQL integration test. Changes to tenant ownership must be tested both through HTTP and directly against database constraints.
+Use an activated Python 3.11+ environment and configure `.env` for MySQL (`DB_*` or `RUNNERX_DATABASE_URL`).
 
-Before submitting, run the unit tests and the complete MySQL suite. If only unit tests were run, state that clearly. Do not commit `.env`, API keys, local databases, real runner records or third-party training materials.
+```sh
+python -m pip install -e ".[dev]"
+python -m runnerx.cli init-db
+uvicorn runnerx.api:app --host 127.0.0.1 --port 8001
+```
 
-Development conventions:
+Windows helper: `.\scripts\run-local.ps1 -ApiPort 8001` starts a dedicated MySQL instance and seeds the API. It requires MySQL binaries; use `-MySqlBin` to specify their directory. Credentials are stored in `.local/native/state.json`.
 
-- Use English throughout documentation, code comments, docstrings, CLI/API messages, tests, examples and synthetic sample data. Keep import headers and unit labels in English.
-- Use explicit units in field names (`_sec`, `_km`, `_cm`, `_kg`).
-- Distinguish a missing value from a numeric zero.
-- Preserve source row locations for validation failures.
-- Do not identify people by name alone.
-- Keep public input schemas explicit; ownership comes from authentication.
-- Maintain backwards-compatible migrations for shared deployments.
+## Tests
+
+```sh
+python -m pytest -m "not integration"
+```
+
+For the full suite, set `RUNNERX_TEST_DATABASE_URL` to a disposable MySQL database whose name ends in `_test`, then run `python -m pytest`. Integration tests apply migrations and clear that database's application tables. Use a separate database for each concurrent suite.
+
+With Compose running, `docker compose --profile tools run --rm verify` checks imports and API isolation. CI runs the MySQL suite, Docker build, business acceptance and backup/restore checks.
+
+## Conventions
+
+- Write concise English for readers with a CS background. Explain functionality, contracts and operational constraints in documentation, comments, messages and fixtures.
+- Use synthetic fixtures. Keep credentials, database exports and private input files out of Git.
+- Use explicit units (`_sec`, `_km`, `_cm`, `_kg`), preserve row numbers in validation errors, and distinguish missing values from zero.
+- Identify runners by tenant and external ID. Derive tenant ownership from authentication.
+- Cover parser changes with valid and rejected inputs; cover ownership changes through both API and database constraints.
+- Include migrations for schema changes. Keep pull requests focused and report the checks run.

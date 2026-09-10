@@ -40,16 +40,14 @@ def _xlsx(path: Path, rows: list[list]) -> None:
     buffer = io.BytesIO()
     workbook.save(buffer)
     workbook.close()
-    # Normalize ZIP timestamps and generated document metadata so repeated
-    # generation with the same seed produces byte-identical XLSX files.
+    # Fix ZIP and document timestamps for deterministic XLSX output.
     with ZipFile(io.BytesIO(buffer.getvalue())) as source, ZipFile(path, "w", compression=ZIP_DEFLATED) as target:
         for name in sorted(source.namelist()):
             content = source.read(name)
             if name == "docProps/core.xml":
                 content = re.sub(rb"(<dcterms:(?:created|modified)[^>]*>)[^<]*(</dcterms:(?:created|modified)>)", rb"\g<1>2026-01-01T00:00:00Z\g<2>", content)
             if name == "xl/theme/theme1.xml":
-                # The default Office theme embeds localized fallback font names.
-                # Keep the complete sample archive English-only, including metadata.
+                # Keep theme font metadata English-only.
                 theme = ElementTree.fromstring(content)
                 for node in theme.iter():
                     if not node.get("typeface", "").isascii():
@@ -62,11 +60,7 @@ def _xlsx(path: Path, rows: list[list]) -> None:
 
 
 def generate_sample(output_dir: Path, runners: int = 30, seed: int = 42) -> dict:
-    """Write English-header XLSX, four weeks of CSV, and a rejection example.
-
-    No input or identity comes from the legacy spreadsheets. The supplied
-    seed controls every generated value and all workbook timestamps are fixed.
-    """
+    """Write deterministic registration, session and invalid-input fixtures."""
     if isinstance(runners, bool) or not isinstance(runners, int) or not 1 <= runners <= 10000:
         raise ValueError("runners must be an integer between 1 and 10000")
     output_dir = Path(output_dir)
@@ -111,19 +105,14 @@ def generate_sample(output_dir: Path, runners: int = 30, seed: int = 42) -> dict
     invalid_rows[1][6] = "00:99:00"
     _xlsx(paths["invalid_registrations"], invalid_rows)
     paths["readme"].write_text(
-        "# Synthetic RunnerX sample data\n\n"
-        "All names, identifiers, measurements, and training records in this directory are generated. "
-        "They do not describe real people and were not copied from any legacy runner spreadsheet.\n\n"
-        f"Generation: runners={runners}, seed={seed}. The same options produce byte-identical files.\n\n"
-        "Suggested bootcamp: code `demo-2026`, start date `2026-01-05`, end date `2026-02-01`.\n\n"
-        f"- `registrations.xlsx`: {runners} synthetic runners, canonical English headers, explicit birth years.\n"
-        f"- `sessions.csv`: {len(session_rows)} synthetic sessions, three per runner per week for four weeks.\n"
-        "- `invalid_registrations.xlsx`: two deliberately invalid rows (missing external ID; malformed 10K clock). "
-        "The entire batch should be rejected, with no business rows changed.\n\n"
-        "Import registrations before sessions. Runner identity is `external_id` within a tenant; names are not keys. "
-        "Repeated committed imports of the same bytes are skipped.\n\n"
-        "Numeric race times are seconds. Race times also accept MM:SS, HH:MM:SS, or English time units such as 3h 5m 9s. "
-        "Pace is seconds per kilometre or MM:SS; a race-duration HH:MM:SS value is rejected as pace.\n",
+        "# Sample data\n\n"
+        "Synthetic fixtures; they do not describe real people.\n\n"
+        f"Generated with `runners={runners}`, `seed={seed}`. Identical options produce byte-identical files.\n\n"
+        "| File | Content |\n| --- | --- |\n"
+        f"| `registrations.xlsx` | {runners} runners with canonical English headers |\n"
+        f"| `sessions.csv` | {len(session_rows)} sessions over four weeks |\n"
+        "| `invalid_registrations.xlsx` | Missing external ID and invalid 10K time; the batch is rejected |\n\n"
+        "Camp: `demo-2026`, `2026-01-05` through `2026-02-01`. Import registrations before sessions.\n",
         encoding="utf-8",
     )
     return paths

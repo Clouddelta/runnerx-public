@@ -1,10 +1,7 @@
-"""Back up Docker MySQL and verify a restore in a NEW *_restore_test database.
+"""Back up Compose MySQL and verify a trusted archive in a new *_restore_test database.
 
-Run from any directory with Python 3.11+. Backups contain application data and
-API-key hashes: keep them private. A checksum detects damage, not authenticity;
-restore only archives produced by this tool that you trust. No live database is
-ever overwritten, and restore imports use a temporary account restricted to the
-new test database. The test database remains available for inspection.
+Requires Python 3.11+ and Docker. Retains the restored database without replacing
+application data; archive checksums detect corruption, not authenticity.
 """
 
 from __future__ import annotations

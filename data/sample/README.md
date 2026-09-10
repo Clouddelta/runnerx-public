@@ -1,15 +1,13 @@
-# Synthetic RunnerX sample data
+# Sample data
 
-All names, identifiers, measurements, and training records in this directory are generated. They do not describe real people and were not copied from any legacy runner spreadsheet.
+Synthetic fixtures; they do not describe real people.
 
-Generation: runners=30, seed=42. The same options produce byte-identical files.
+Generated with `runners=30`, `seed=42`. Identical options produce byte-identical files.
 
-Suggested bootcamp: code `demo-2026`, start date `2026-01-05`, end date `2026-02-01`.
+| File | Content |
+| --- | --- |
+| `registrations.xlsx` | 30 runners with canonical English headers |
+| `sessions.csv` | 360 sessions over four weeks |
+| `invalid_registrations.xlsx` | Missing external ID and invalid 10K time; the batch is rejected |
 
-- `registrations.xlsx`: 30 synthetic runners, canonical English headers, explicit birth years.
-- `sessions.csv`: 360 synthetic sessions, three per runner per week for four weeks.
-- `invalid_registrations.xlsx`: two deliberately invalid rows (missing external ID; malformed 10K clock). The entire batch should be rejected, with no business rows changed.
-
-Import registrations before sessions. Runner identity is `external_id` within a tenant; names are not keys. Repeated committed imports of the same bytes are skipped.
-
-Numeric race times are seconds. Race times also accept MM:SS, HH:MM:SS, or English time units such as 3h 5m 9s. Pace is seconds per kilometre or MM:SS; a race-duration HH:MM:SS value is rejected as pace.
+Camp: `demo-2026`, `2026-01-05` through `2026-02-01`. Import registrations before sessions.

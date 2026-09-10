@@ -1,35 +1,36 @@
 # Architecture
 
-RunnerX is one Python application with two entry points: a trusted offline administrative CLI and an HTTP API authenticated by tenant API keys. Both use the same relational schema.
+RunnerX combines a tenant-authenticated HTTP API and an administrative import CLI over one MySQL schema.
 
 ```mermaid
 flowchart LR
-    Excel[CSV and Excel] --> Validation[Parse and validate every row]
-    Validation -->|invalid| Audit[Rejected batch audit]
-    Validation -->|valid| Import[Atomic import transaction]
+    Files[CSV / XLSX] --> Validate[Batch validation]
+    Validate -->|invalid| Audit[Rejection audit]
+    Validate -->|valid| Import[Atomic import]
     Import --> DB[(MySQL)]
     Audit --> DB
     Client[API client] --> Auth[Tenant API key]
-    Auth --> API[FastAPI and Pydantic]
+    Auth --> API[FastAPI / Pydantic]
     API --> DB
 ```
 
-## Ownership and identity
+## Data model
 
-A tenant owns runners and bootcamps. Registration joins a runner to a bootcamp; a group belongs to that same bootcamp. Training records reference an existing registration. Composite foreign keys include tenant and bootcamp IDs, so a direct database write cannot associate another tenant's runner or a different camp's group.
+- Tenants own runners and bootcamps; registrations join them. Groups belong to a bootcamp, and training sessions reference a registration.
+- Composite foreign keys enforce tenant and bootcamp ownership, including group assignments.
+- UUIDs identify records. Runner `external_id` is case-sensitive and unique per tenant; names are editable attributes.
+- Each runner has at most one training session per bootcamp and calendar date.
 
-UUIDs are internal keys. `external_id` is the stable, case-sensitive runner identifier supplied by the source system, unique per tenant. Names are ordinary editable attributes. There is one session per runner/camp/calendar date in v0.1; multiple same-day workouts would require a future schema change.
+## Writes
 
-## Transactions and concurrency
+The CLI validates the complete import before writing business records and its audit in one transaction. Rejected batches write only an audit; dry runs write nothing. Changed files update matching business keys, preserving blank optional fields. API PATCH accepts explicit null for nullable fields.
 
-The CLI owns commit/rollback. The importer first parses and validates the complete batch, then writes business records and its audit in one transaction. Rejected imports write an audit only. Dry runs never flush or create audits. Missing optional values on a corrected import preserve existing values; use API PATCH with explicit null to clear nullable fields.
+Imports and date-dependent API writes lock the bootcamp row. Connections use READ COMMITTED isolation; unique constraints resolve remaining identity conflicts. Callers own commit/rollback.
 
-Imports lock their bootcamp row. API operations that change date-dependent data use the same camp lock. Database connections use READ COMMITTED so queries after waiting on a lock see committed changes. Unique constraints remain the final defense against concurrent identity conflicts; a database failure rolls back the operation and the CLI reports failure.
+## Reads and runtime
 
-## Query and deployment scope
+API queries filter by authenticated tenant. Pagination uses stable ordering and a maximum page size of 100. Composite indexes support tenant, bootcamp and date filters; MySQL computes counts and distance aggregates.
 
-Pagination is bounded to 100 rows, with stable ordering. Composite indexes support tenant/camp/date access. Counts and distance aggregation execute in MySQL. No throughput target has been measured for this release.
+API keys are random bearer credentials stored as SHA-256 digests. The CLI creates and revokes keys using direct database access.
 
-Local Docker Compose separates database, migration and API lifecycle. GCP uses Cloud SQL and Cloud Run, with a separate migration job. Migration changes must remain compatible with the previous application revision during rollout. The cloud workflow tests a candidate revision before moving existing traffic; this is not a guarantee of zero downtime.
-
-API keys are random bearer credentials stored as SHA-256 digests. The CLI can create/list/revoke them. The CLI is a trusted administrative surface with database access, not a public tenant endpoint. Production disables documentation by default and the provided Cloud Run configuration additionally requires IAM authentication.
+Docker Compose runs MySQL, an Alembic migration service and FastAPI; the API starts after migrations succeed. See [Docker operations](docker-guide.md) and the [optional GCP reference](deployment.md).
