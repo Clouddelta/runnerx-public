@@ -1,8 +1,8 @@
 # RunnerX — Backend & Data Engineering Platform
 
-A Python backend and offline ETL platform for runner and training camp data. This first release connects synthetic Excel/CSV inputs, validation, MySQL, authenticated APIs, and lifecycle tests. It includes local deployment and optional Google Cloud delivery configuration.
+A Python backend and offline ETL platform for runner and training camp data. This first release connects synthetic Excel/CSV inputs, validation, MySQL, authenticated APIs, and lifecycle tests. Docker Compose is the v0.1 delivery target; no cloud account or deployment is required.
 
-RunnerX 是一个以跑者与训练营为场景的后端和数据工程项目。第一版覆盖数据清洗、关系存储、租户隔离、API、测试与部署配置。仓库中的样例全部由程序生成。
+RunnerX 是一个以跑者与训练营为场景的后端和数据工程项目。第一版通过 Docker Compose 交付，覆盖数据清洗、关系存储、租户隔离、API 和完整数据流程测试。无需部署云服务；仓库中的样例全部由程序生成。
 
 ## What works
 
@@ -13,39 +13,57 @@ RunnerX 是一个以跑者与训练营为场景的后端和数据工程项目。
 - Runner identity uses a case-sensitive external ID within each tenant. Re-importing a committed file's bytes is a no-op; corrected files update existing business keys.
 - Dry runs write nothing. Imports retain a SHA-256 fingerprint, row-level errors and inserted/updated counts.
 - Versioned migrations, dedicated MySQL test fixtures, end-to-end tests, Docker Compose and CI.
-- Optional Cloud SQL TCP/Unix socket connectivity, Terraform and a gated Cloud Run release workflow.
 
 The API is the product interface. Interactive documentation is available at `/docs` in local mode. No frontend, ML prediction or third-party fitness account is required.
 
 ## Quick start with Docker
 
-Prerequisites: Docker Engine/Desktop with Compose running. The default ports are API 8000 and MySQL 3308, bound to localhost.
+Prerequisites: Docker Engine/Desktop with Linux containers and the Compose plugin running. Application containers need no host Python or MySQL. Both published ports bind to localhost.
 
-```sh
-cp .env.example .env
-docker compose up --build -d
+From your checkout's root in **PowerShell**:
+
+~~~powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+$env:API_PORT = '8002'
+$env:MYSQL_HOST_PORT = '3308'
+~~~
+
+Or in **Bash**:
+
+~~~sh
+test -f .env || cp .env.example .env
+export API_PORT=8002
+export MYSQL_HOST_PORT=3308
+~~~
+
+Then run these commands in either shell, stopping if a command fails:
+
+~~~sh
+docker compose config --quiet
+docker compose build api
+docker compose up -d --no-build --wait --wait-timeout 180
 docker compose --profile tools run --rm seed
-```
+docker compose ps -a
+~~~
 
-PowerShell users can replace the first command with `Copy-Item .env.example .env`.
+Open [Swagger](http://127.0.0.1:8002/docs), click **Authorize**, and enter the local `DEMO_API_KEY` from `.env`, without a `Bearer ` prefix. With the unchanged example file, the key is:
 
-If port 8000 is already in use, set `API_PORT=8002` in `.env` before starting Compose, then open `http://127.0.0.1:8002/docs`. This is useful when the native Windows API is also running.
+~~~text
+runnerx-demo-token-for-local-use-only-2026
+~~~
 
-Open <http://127.0.0.1:8000/docs>, click **Authorize**, and enter the local `DEMO_API_KEY` from `.env`. The provided `.env.example` credentials are public demo values, intended only for localhost. Replace them for any shared deployment.
+The seed command creates the `demo` tenant, the `demo-2026` camp, 30 synthetic runners and 360 sessions. Repeating it preserves existing IDs and counts. The example credentials are public demo values for localhost.
 
-```sh
-curl http://127.0.0.1:8000/api/v1/runners \
-  -H "Authorization: Bearer runnerx-demo-token-for-local-use-only-2026"
-```
+The examples use port 8002 to avoid conflicts with native development; the default in `.env.example` is 8000. Set `API_PORT=8002` in `.env` for a persistent choice across terminals. Shell environment values take precedence.
 
-The seed command creates the `demo` tenant, the `demo-2026` training camp, 30 synthetic runners and 360 sessions. Run it again to verify that row counts stay unchanged.
-
-```sh
-docker compose logs api
+~~~sh
+docker compose logs --tail 100 db migrate api
 docker compose down
-```
+~~~
 
-Stopping Compose preserves the database volume. Only remove its volume when you intend to erase the demo database.
+Normal `down` retains the MySQL volume. Adding `-v` deletes its data.
+
+Follow the [Docker guide](docs/docker-guide.md) for custom Excel/CSV imports, repeatable business acceptance, backup and restore, upgrades and common errors. See [v0.1.0 release notes](docs/releases/v0.1.0.md) for scope and compatibility.
 
 ## Native Windows start
 
@@ -75,6 +93,8 @@ uvicorn runnerx.api:app --host 127.0.0.1 --port 8000
 `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` configure TCP. Set `DB_UNIX_SOCKET` to use Cloud SQL's mounted Unix socket. `RUNNERX_DATABASE_URL` is an optional explicit `mysql+pymysql://` override. The server does not create tables at startup; migrations are an explicit operation.
 
 ## Import and validation example
+
+These commands assume a host Python development environment. Docker users can follow the [container import workflow](docs/docker-guide.md#3-import-your-own-excel-or-csv).
 
 ```sh
 python -m runnerx.cli import --tenant demo --bootcamp demo-2026 \
@@ -125,6 +145,14 @@ The generated key is displayed once. In v0.1 a tenant key grants access to that 
 
 ## Tests
 
+With Compose running, repeat the real API/import business acceptance checks without host Python:
+
+~~~sh
+docker compose --profile tools run --rm verify
+~~~
+
+The tool uses fresh synthetic QA tenants and removes only its own test tenants by default. See the [Docker guide](docs/docker-guide.md#4-repeat-the-business-acceptance-checks) for behavior and the [business acceptance report](docs/business-acceptance.md) for observed results.
+
 Unit tests require no database:
 
 ```sh
@@ -142,9 +170,9 @@ Tests apply migrations and clear application rows only in that explicitly config
 
 CI starts an ephemeral MySQL 8.4 service, applies migrations, runs the full suite and builds the Docker image. Deployment-script tests use fake cloud commands to check that failures prevent traffic changes. See [validation notes](docs/validation.md) for the checks actually run for this release.
 
-## Architecture and cloud delivery
+## Architecture and optional reference configuration
 
-See [architecture](docs/architecture.md) and [deployment](docs/deployment.md). Cloud provisioning/deployment is opt-in and requires your own GCP project. Local operation needs no cloud credentials.
+See [architecture](docs/architecture.md) and the [Docker guide](docs/docker-guide.md). The repository retains optional Cloud SQL, Terraform and Cloud Run files described in [deployment reference](docs/deployment.md); real cloud deployment is outside the v0.1 Docker release and remains unverified.
 
 The repository makes no measured claim of 90% labor savings, high-throughput performance, or zero-downtime releases. Those require separate measurements under stated workloads.
 

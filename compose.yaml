@@ -70,5 +70,16 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
+  verify:
+    image: runnerx-public:local
+    build: .
+    profiles: ["tools"]
+    environment: *app-environment
+    command: ["python", "-m", "runnerx.acceptance", "--base-url", "http://api:8000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   mysql-data:

@@ -1,5 +1,23 @@
 # Release 0.1 validation
 
+## Docker v0.1.0 release checks
+
+The reusable tools were checked locally on 2026-09-10 with MySQL 8.4.11:
+
+| Check | Observed result |
+| --- | --- |
+| Complete Python suite, including acceptance cleanup and backup safeguards | 140 passed, 1 skipped on Windows; the skipped symbolic-link test requires symlink creation permission |
+| `docker compose --profile tools run --rm verify` | All 11 business checks passed; automatic QA cleanup passed |
+| Preservation of existing data after verification and cleanup | All pre-existing application table fingerprints unchanged |
+| Backup of the current Compose database | 136,280-byte logical SQL dump with a SHA-256 manifest |
+| Restore into a new `runnerx_v010_restore_test` database | Restored SQL content SHA-256 exactly matched the backup |
+| Restored data | 3 tenants, 36 runners, 36 registrations and 396 sessions, including the earlier retained QA tenants |
+| Source database during restore rehearsal | Not replaced; API continues to use the original database |
+
+The current CI workflow also runs Compose seed/acceptance and the backup/restore rehearsal after its Python suite and Docker build. See the workflow run for the commit being evaluated; the historical baseline below describes the earlier implementation.
+
+## Earlier baseline
+
 The native checks below were run on 2026-09-10 using Python 3.11, MySQL Community Server 8.0.44 and the versions pinned in pyproject.toml. Docker Compose was separately verified on the same date with Docker Desktop 4.80.0 / Engine 29.6.1, Python 3.11.16 and MySQL 8.4.11. The native suite was not rerun against the Compose database. A separate GitHub-hosted CI run also passed all 93 tests against its dedicated MySQL 8.4 service.
 
 | Check | Observed result |

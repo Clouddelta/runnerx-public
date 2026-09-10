@@ -36,6 +36,10 @@ jobs:
       DB_NAME: runnerx_test
       DB_UNIX_SOCKET: ""
       RUNNERX_TEST_DATABASE_URL: mysql+pymysql://runnerx_test:ci-only-password@127.0.0.1:3306/runnerx_test
+      MYSQL_ROOT_PASSWORD: compose-ci-only-root-password
+      MYSQL_HOST_PORT: "3308"
+      API_PORT: "8002"
+      DEMO_API_KEY: compose-ci-only-demo-api-key-for-tests
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -51,6 +55,22 @@ jobs:
         run: python -m pytest -p no:cacheprovider
       - name: Build the production container
         run: docker build --tag runnerx:ci .
+      - name: Verify Docker business flows and backup recovery
+        run: |
+          docker tag runnerx:ci runnerx-public:local
+          docker compose up -d --no-build --wait --wait-timeout 180
+          docker compose --profile tools run --rm seed
+          mkdir -p .local
+          docker compose --profile tools run --rm verify > .local/acceptance.json
+          cat .local/acceptance.json
+          python scripts/backup_restore.py backup --output .local/backups/ci
+          python scripts/backup_restore.py restore --backup .local/backups/ci --database runnerx_ci_restore_test
+      - name: Show Compose logs on failure
+        if: failure()
+        run: docker compose logs --tail 100 db migrate api
+      - name: Stop Compose services
+        if: always()
+        run: docker compose down
 
   infrastructure:
     runs-on: ubuntu-latest

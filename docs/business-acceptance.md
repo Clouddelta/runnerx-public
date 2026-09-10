@@ -1,5 +1,15 @@
 # Live business acceptance
 
+The shipped, repeatable version now runs with:
+
+```sh
+docker compose --profile tools run --rm verify
+```
+
+It performs 11 real HTTP/CLI checks, creates fresh synthetic QA tenants and removes only those tenants and their dependent data at the end. Existing records are fingerprinted before and after cleanup. Run it while other writers are idle. JSON results go to stdout; progress goes to stderr, and a failed check or cleanup exits with code 1. No demo key or prior seed is required. A forced process/container kill can prevent cleanup; the report identifies QA tenants when available.
+
+The reusable command passed on 2026-09-10 with cleanup confirmed. The historical details below describe the earlier one-off run, whose QA tenants were deliberately retained for inspection.
+
 Executed on 2026-09-10 against the running Docker Compose API at `http://127.0.0.1:8002`, backed by MySQL 8.4.11. These checks use real HTTP requests and administrative CLI imports inside the API container. They are separate from the 93-test pytest suite.
 
 Two dedicated synthetic QA tenants were created for run `qa-business-20260910-161712-f9c484`. Each has its own camp with code `qa-2026`, covering 2026-01-05 through 2026-02-01. Tenant A imported three generated registrations and 36 training sessions. Tenant B initially had only its own empty camp, then imported the same registration file.
