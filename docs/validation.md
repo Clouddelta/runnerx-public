@@ -1,10 +1,12 @@
 # Release 0.1 validation
 
-The native checks below were run on 2026-09-10 using Python 3.11, MySQL Community Server 8.0.44 and the versions pinned in pyproject.toml. Docker Compose was separately verified on the same date with Docker Desktop 4.80.0 / Engine 29.6.1, Python 3.11.16 and MySQL 8.4.11. The 93-test suite result refers to the native database; it was not rerun against the Compose database.
+The native checks below were run on 2026-09-10 using Python 3.11, MySQL Community Server 8.0.44 and the versions pinned in pyproject.toml. Docker Compose was separately verified on the same date with Docker Desktop 4.80.0 / Engine 29.6.1, Python 3.11.16 and MySQL 8.4.11. The native suite was not rerun against the Compose database. A separate GitHub-hosted CI run also passed all 93 tests against its dedicated MySQL 8.4 service.
 
 | Check | Observed result |
 | --- | --- |
-| Full Python suite against a dedicated MySQL database | 93 passed |
+| Full Python suite against a dedicated native MySQL database | 93 passed |
+| Full Python suite in GitHub Actions with a dedicated MySQL 8.4 service | 93 passed |
+| GitHub Actions migration, Docker build and infrastructure checks | Passed; 4 simulated deployment tests also passed |
 | Deployment-script flow tests with fake cloud commands | 4 passed |
 | Alembic migrations applied to an empty database | Passed |
 | Alembic metadata drift check | No new upgrade operations detected |
@@ -56,9 +58,12 @@ docker compose up -d --no-build --wait --wait-timeout 120
 
 Use the DEMO_API_KEY in .env for authenticated requests. Set API_PORT in .env if the port choice should persist across PowerShell sessions. The default port in .env.example remains 8000.
 
+## GitHub-hosted CI verification
+
+The first hosted [CI run](https://github.com/Clouddelta/runnerx-public/actions/runs/34499311823) completed successfully on 2026-09-10 for commit `b1b24c7fe50ba82e9e2a0f10ecb1651085f5c2f0`. Both `test` and `infrastructure` passed. The run applied migrations to an empty MySQL 8.4 test database, passed all 93 Python tests, built the Docker image, validated Terraform and Bash syntax, and passed all 4 deployment flow tests with fake cloud commands. No GCP resources were provisioned or deployed.
+
 ## Not executed
 
-- GitHub-hosted CI: workflow files are prepared, but this project has not been pushed or published.
 - GCP provisioning, Cloud SQL connections and Cloud Run deployment: no cloud project was modified.
 - Load testing, zero-downtime measurement, or a measured reduction in manual cleaning work.
 
