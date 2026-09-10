@@ -15,7 +15,6 @@ from openpyxl.styles import Font, PatternFill
 
 
 START_DATE = date(2026, 1, 5)
-END_DATE = date(2026, 2, 1)
 HEADERS = ["external_id", "full_name", "gender", "birth_year", "height_cm", "weight_kg", "test_10k_sec", "fm_best_sec", "prep_mileage_km", "experience_text"]
 
 

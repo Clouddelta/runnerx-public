@@ -13,12 +13,6 @@ dist/
 *.log
 *.pem
 *.key
-*.tfstate*
-*.tfplan
-.terraform/
-*.tfvars
-!*.tfvars.example
 data/private/
 data/reports/
 .local/
-gha-creds-*.json

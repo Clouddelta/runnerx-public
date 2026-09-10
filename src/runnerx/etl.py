@@ -182,7 +182,7 @@ def _read_rows(content: bytes, suffix: str) -> tuple[list[dict], list[dict]]:
     if suffix.lower() == ".xlsx":
         frame = pd.read_excel(io.BytesIO(content), engine="openpyxl", dtype=object, keep_default_na=False)
     elif suffix.lower() == ".csv":
-        frame = pd.read_csv(io.BytesIO(content), encoding="utf-8-sig", dtype=object, keep_default_na=False)
+        frame = pd.read_csv(io.BytesIO(content), encoding="utf-8-sig", dtype=object, keep_default_na=False, skip_blank_lines=False)
     else:
         raise ValueError("only .xlsx and UTF-8 .csv files are supported")
     fields = [_ALIAS_MAP.get(_header(column), _ALIAS_MAP.get(_header(re.sub(r"\.\d+$", "", str(column))), str(column).strip())) for column in frame.columns]
@@ -344,8 +344,7 @@ def import_file(db: Session, *, tenant_id: str, bootcamp_id: str, path: Path, ki
                         db.add(runner)
                         runners[row["external_id"]] = runner
                     _assign(runner, row, ("full_name", "gender", "birth_year", "height_cm", "weight_kg"))
-                # Explicit ordering also supports MySQL installations without
-                # ORM relationships connecting newly added parent/child rows.
+                # Flush runners before inserting dependent registrations.
                 db.flush()
                 for row in parsed:
                     runner = runners[row["external_id"]]

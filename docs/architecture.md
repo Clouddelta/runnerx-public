@@ -33,4 +33,4 @@ API queries filter by authenticated tenant. Pagination uses stable ordering and 
 
 API keys are random bearer credentials stored as SHA-256 digests. The CLI creates and revokes keys using direct database access.
 
-Docker Compose runs MySQL, an Alembic migration service and FastAPI; the API starts after migrations succeed. See [Docker operations](docker-guide.md) and the [optional GCP reference](deployment.md).
+Docker Compose runs MySQL, an Alembic migration service and FastAPI; the API starts after migrations succeed. See [Docker operations](docker-guide.md).

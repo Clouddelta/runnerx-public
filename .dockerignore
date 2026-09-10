@@ -13,13 +13,8 @@ htmlcov
 .env.*
 *.pem
 *.key
-gha-creds-*.json
 **/*credentials*.json
 **/*service-account*.json
-**/*.tfstate*
-**/*.tfplan
-**/.terraform
-infra
 docs
 tests
 output

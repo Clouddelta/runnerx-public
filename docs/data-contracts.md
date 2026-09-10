@@ -40,8 +40,8 @@ Pace accepts numeric seconds/km, `MM:SS`, Excel time cells, or English minutes/s
 ## Batch behavior
 
 - Import registrations before training sessions. Decimal values exceeding field precision are rejected rather than rounded.
-- Row or header errors reject all business changes and create a rejection audit. Unsupported formats and oversized files fail before database access.
-- Error reports contain the 1-based source row, field and message. `rejected_count` counts unapplied rows, not individual errors.
+- Row or header errors reject all business changes and create a rejection audit. Unsupported formats and oversized files fail without writes.
+- Error reports contain a 1-based worksheet row or CSV record number, field and message. CSV numbering includes the header and blank records; quoted multiline fields count as one record. `rejected_count` counts unapplied rows, not individual errors.
 - Replay detection uses tenant, bootcamp, import kind and exact file-byte SHA-256. Identical committed files are skipped, including after API edits.
 - Changed files update matching business keys. Missing optional values preserve existing attributes; API PATCH with explicit null clears nullable fields.
 - The administrative CLI supports `--dry-run` without writes. Import files are not accepted through the HTTP API.

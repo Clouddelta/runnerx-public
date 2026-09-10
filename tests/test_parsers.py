@@ -71,6 +71,30 @@ def test_csv_aliases_preserve_leading_zero_ids_and_report_header_collisions():
         assert errors[0]["field"] == "headers"
 
 
+@pytest.mark.parametrize("blank_record", ["", "  ", ",", " , "])
+def test_csv_blank_records_preserve_subsequent_row_numbers(blank_record):
+    content = f"external_id,full_name\nSYN1,First\n{blank_record}\n,Missing ID\n"
+    rows, errors = _read_rows(content.encode(), ".csv")
+    assert errors == []
+    assert [row["row"] for row in rows] == [2, 4]
+    assert rows[1]["data"] == {"external_id": None, "full_name": "Missing ID"}
+
+
+def test_csv_only_blank_records_have_no_data_rows():
+    rows, errors = _read_rows(b"external_id,full_name\n\n,\n , \n", ".csv")
+    assert errors == []
+    assert rows == []
+
+
+def test_csv_multiline_fields_use_logical_record_numbers():
+    content = b'external_id,full_name\nSYN1,"First\nRunner"\n\n,Missing ID\n'
+    rows, errors = _read_rows(content, ".csv")
+    assert errors == []
+    assert [row["row"] for row in rows] == [2, 4]
+    assert rows[0]["data"]["full_name"] == "First\nRunner"
+    assert rows[1]["data"]["external_id"] is None
+
+
 def test_sample_is_deterministic_and_explicitly_synthetic(tmp_path):
     first = generate_sample(tmp_path / "first", runners=3, seed=42)
     second = generate_sample(tmp_path / "second", runners=3, seed=42)

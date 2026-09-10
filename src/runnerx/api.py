@@ -10,6 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from runnerx import __version__
 from runnerx.auth import get_tenant
 from runnerx.config import get_settings
 from runnerx.db import get_session
@@ -27,7 +28,7 @@ from runnerx.schemas import (
 _settings = get_settings()
 app = FastAPI(
     title="RunnerX API",
-    version="0.1.1",
+    version=__version__,
     description="Authenticated, tenant-scoped training-camp data and import audit records.",
     docs_url="/docs" if _settings.docs_enabled else None,
     redoc_url="/redoc" if _settings.docs_enabled else None,
@@ -42,8 +43,7 @@ def _scope(model, tenant: Tenant):
 def _get(db: Session, tenant: Tenant, model, resource_id, *, for_update: bool = False):
     statement = _scope(model, tenant).where(model.id == str(resource_id))
     if for_update:
-        # MySQL locking reads see newly committed rows even after authentication
-        # has established this transaction's REPEATABLE READ snapshot.
+        # Lock and refresh the row after any concurrent writer finishes.
         statement = statement.with_for_update().execution_options(populate_existing=True)
     obj = db.scalar(statement)
     if obj is None:
