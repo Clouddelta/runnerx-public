@@ -26,6 +26,7 @@ The native checks below were run on 2026-09-10 using Python 3.11, MySQL Communit
 | Compose camp statistics | 30 registered/active runners, 360 sessions, 4176.01 km |
 | Repeated Compose seed | Both files skipped as duplicates; original batch IDs and all record IDs retained |
 | Compose down/up without removing volumes or reseeding | Counts, record IDs and camp statistics unchanged; API and MySQL healthy |
+| Live Docker business acceptance with two QA tenants | All 11 checks passed; Excel updates, atomic rejection and tenant isolation verified |
 | Terraform format, provider initialization and validate | Passed; no resources provisioned |
 
 Database tests include tenant isolation at both API and SQL layers, foreign-key restrictions, partial-update handling, duplicate import replay, exact external identifiers, decimal precision rejection, row-level error reporting, full Excel-to-API flow, and an import transaction racing a camp date update.
@@ -61,6 +62,8 @@ Use the DEMO_API_KEY in .env for authenticated requests. Set API_PORT in .env if
 ## GitHub-hosted CI verification
 
 The first hosted [CI run](https://github.com/Clouddelta/runnerx-public/actions/runs/34499311823) completed successfully on 2026-09-10 for commit `b1b24c7fe50ba82e9e2a0f10ecb1651085f5c2f0`. Both `test` and `infrastructure` passed. The run applied migrations to an empty MySQL 8.4 test database, passed all 93 Python tests, built the Docker image, validated Terraform and Bash syntax, and passed all 4 deployment flow tests with fake cloud commands. No GCP resources were provisioned or deployed.
+
+See [live business acceptance](business-acceptance.md) for the separate Docker checks of modified Excel imports, mixed valid/invalid batches, cross-tenant requests and preservation of the existing demo.
 
 ## Not executed
 
